@@ -1,5 +1,5 @@
 const express = require('express');
-const path = path = require('path');
+const path = require('path');
 
 const app = express();
 
@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
-    // يمكنك تعديل اسم المستخدم وكلمة المرور حسب حاجتك
+    // يمكنك تعديل اسم المستخدم وكلمة المرور حسب الحاجة
     if (username === 'admin' && password === 'admin') {
         return res.json({ success: true, redirectUrl: '/dashboard.html' });
     }
