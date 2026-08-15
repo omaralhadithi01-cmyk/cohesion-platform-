@@ -1,23 +1,35 @@
 const express = require('express');
-const path = require('path');
+const path = path = require('path');
 
 const app = express();
 
-// إعدادات استقبال البيانات وقراءتها بصيغة JSON و Form-encoded
+// استقبال وقراءة البيانات بصيغة JSON و Form Data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// مشاركة كافة الملفات الثابتة (HTML, CSS, JS, الصور) الموجودة في مجلد المشروع
+// تقديم جميع الملفات الثابتة (HTML, CSS, JS) من المجلد الرئيسي
 app.use(express.static(__dirname));
 
-// التوجيه التلقائي للمسار الرئيسي إلى صفحة تسجيل الدخول login.html
+// التوجيه للصفحة الرئيسية
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// قراءة المنفذ المخصص من منصة الاستضافة تلقائياً أو الاستماع على المنفذ 3000 محلياً
+// مسار معالجة تسجيل الدخول (API)
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    // يمكنك تعديل اسم المستخدم وكلمة المرور حسب حاجتك
+    if (username === 'admin' && password === 'admin') {
+        return res.json({ success: true, redirectUrl: '/dashboard.html' });
+    }
+
+    return res.status(401).json({ success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+});
+
+// قراءة المنفذ الديناميكي الخاص بـ Railway تلقائياً
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running successfully on port ${PORT}`);
+    console.log(`Server running successfully on port ${PORT}`);
 });
