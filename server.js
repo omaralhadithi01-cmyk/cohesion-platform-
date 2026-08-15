@@ -19,8 +19,12 @@ app.get('/', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
-    // يمكنك تعديل اسم المستخدم وكلمة المرور حسب الحاجة
-    if (username === 'admin' && password === 'admin') {
+    // --- ضع بيانات الدخول الخاصة بك هنا ---
+    const MY_USERNAME = 'your_username'; // اكتب اسم المستخدم الذي تريده هنا
+    const MY_PASSWORD = 'your_password'; // اكتب كلمة المرور التي تريدها هنا
+    // --------------------------------------
+
+    if (username === MY_USERNAME && password === MY_PASSWORD) {
         return res.json({ success: true, redirectUrl: '/dashboard.html' });
     }
 
