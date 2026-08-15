@@ -3,422 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة قيادة التماسك المجتمعي - مركز التحليلات المباشرة</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- Chart.js للرسوم البيانية -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- مكتبة تصدير Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-    <!-- مكتبة تصدير PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
+    <title>لوحة التحكم | النظام</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0f172a; color: #f8fafc; padding: 15px; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            display: flex;
+            background-color: #f4f7f6;
+            height: 100vh;
+        }
+        /* القائمة الجانبية */
+        .sidebar {
+            width: 250px;
+            background-color: #1e3c72;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+        .sidebar h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            padding: 15px 20px;
+            display: block;
+            transition: background 0.3s;
+            font-size: 16px;
+        }
+        .sidebar a:hover {
+            background-color: #2a5298;
+            border-right: 4px solid #00bcd4;
+        }
+        /* المحتوى الرئيسي */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        /* الشريط العلوي */
         .header {
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #1e293b;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-right: 5px solid #38bdf8;
         }
-
-        .filter-bar {
-            background: #1e293b;
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: flex;
-            gap: 15px;
-            align-items: center;
+        .header h1 {
+            font-size: 20px;
+            color: #333;
         }
-        .filter-group { display: flex; align-items: center; gap: 8px; }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        #map { height: 420px; border-radius: 8px; }
-
-        .side-panel {
-            background: #1e293b;
-            padding: 15px;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .charts-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .chart-card {
-            background: #1e293b;
-            padding: 15px;
-            border-radius: 8px;
-            height: 280px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .chart-container { position: relative; width: 100%; height: 210px; }
-
-        .form-group { display: flex; flex-direction: column; gap: 4px; }
-        input, select, textarea, button {
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #334155;
-            background: #0f172a;
+        .logout-btn {
+            background-color: #d32f2f;
             color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
         }
-        button { background-color: #22c55e; color: white; font-weight: bold; cursor: pointer; border: none; }
-        button:hover { background-color: #16a34a; }
-
-        .btn-action { display: flex; gap: 10px; margin-top: 5px; }
-        .btn-excel { background-color: #0d9488; }
-        .btn-excel:hover { background-color: #0f766e; }
-        .btn-pdf { background-color: #e11d48; }
-        .btn-pdf:hover { background-color: #be123c; }
-
-        .table-container { background: #1e293b; padding: 15px; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: right; }
-        th, td { padding: 10px; border-bottom: 1px solid #334155; }
-        th { background-color: #334155; color: #38bdf8; }
-        tr:hover { background-color: #0f172a; }
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .bg-حرج { background-color: #ef4444; }
-        .bg-عالي { background-color: #f97316; }
-        .bg-متوسط { background-color: #eab308; color: black; }
-        .bg-بسيط { background-color: #22c55e; }
+        .logout-btn:hover {
+            background-color: #b71c1c;
+        }
+        /* منطقة البطاقات */
+        .cards-container {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .card h3 {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
     </style>
 </head>
 <body>
 
-    <!-- الهيدر الرئيسي -->
-    <div class="header">
-        <div>
-            <h2>مركز قيادة التماسك المجتمعي - اللوحة التحليلية</h2>
-            <span style="color: #94a3b8; font-size: 13px;">مباشر | التحديث التلقائي مفعّل</span>
-        </div>
+    <!-- القائمة الجانبية -->
+    <div class="sidebar">
+        <h2>نظام الإدارة</h2>
+        <a href="#">🏠 الرئيسية</a>
+        <a href="#">👥 المستخدمين</a>
+        <a href="#">⚙️ الإعدادات</a>
+        <a href="#">📊 التقارير</a>
     </div>
 
-    <!-- شريط الفلاتر الحية -->
-    <div class="filter-bar">
-        <strong>تصفية البيانات:</strong>
-        <div class="filter-group">
-            <label>القضاء:</label>
-            <select id="filterDistrict" onchange="loadAllData()">
-                <option value="الكل">جميع الأقضية</option>
-                <option value="الرمادي">الرمادي</option>
-                <option value="الفلوجة">الفلوجة</option>
-                <option value="هيت">هيت</option>
-                <option value="حديثة">حديثة</option>
-                <option value="القائم">القائم</option>
-                <option value="بغداد">بغداد</option>
-            </select>
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content">
+        <!-- الشريط العلوي -->
+        <div class="header">
+            <h1>مرحباً بك، أستاذ عمر!</h1>
+            <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
         </div>
-        <div class="filter-group">
-            <label>مستوى الخطورة:</label>
-            <select id="filterSeverity" onchange="loadAllData()">
-                <option value="الكل">الجميع</option>
-                <option value="بسيط">بسيط</option>
-                <option value="متوسط">متوسط</option>
-                <option value="عالي">عالي</option>
-                <option value="حرج">حرج</option>
-            </select>
-        </div>
-    </div>
 
-    <div class="dashboard-grid">
-        <!-- الخريطة -->
-        <div id="map"></div>
-
-        <!-- لوحة الإدخال والتصدير -->
-        <div class="side-panel">
-            <h3>تسجيل بلاغ جديد</h3>
-            <div class="form-group">
-                <label>العنوان:</label>
-                <input type="text" id="reportTitle" placeholder="عنوان البلاغ...">
+        <!-- الإحصائيات (البطاقات) -->
+        <div class="cards-container">
+            <div class="card">
+                <h3>إجمالي المستخدمين</h3>
+                <div class="number">150</div>
             </div>
-            <div class="form-group">
-                <label>التفاصيل:</label>
-                <textarea id="reportDesc" rows="2" placeholder="تفاصيل..."></textarea>
+            <div class="card">
+                <h3>الزيارات اليومية</h3>
+                <div class="number">42</div>
             </div>
-            <div class="form-group">
-                <label>مستوى الخطورة:</label>
-                <select id="reportSeverity">
-                    <option value="بسيط">بسيط</option>
-                    <option value="متوسط">متوسط</option>
-                    <option value="عالي">عالي</option>
-                    <option value="حرج">حرج</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>القضاء:</label>
-                <select id="reportDistrict">
-                    <option value="الرمادي">الرمادي</option>
-                    <option value="الفلوجة">الفلوجة</option>
-                    <option value="هيت">هيت</option>
-                    <option value="حديثة">حديثة</option>
-                    <option value="القائم">القائم</option>
-                    <option value="بغداد">بغداد</option>
-                </select>
-            </div>
-            <button onclick="submitReport()">إرسال وتحديث اللوحة</button>
-
-            <hr style="border-color: #334155; margin: 5px 0;">
-
-            <h3>تصدير التقارير الرسمية</h3>
-            <div class="btn-action">
-                <button class="btn-excel" onclick="exportToExcel()" style="width: 50%;">تصدير Excel</button>
-                <button class="btn-pdf" onclick="exportToPDF()" style="width: 50%;">تصدير PDF</button>
+            <div class="card">
+                <h3>التنبيهات</h3>
+                <div class="number">3</div>
             </div>
         </div>
     </div>
-
-    <!-- الرسوم البيانية التفاعلية -->
-    <div class="charts-grid">
-        <div class="chart-card">
-            <h4 style="margin-bottom: 10px;">تصنيف البلاغات حسب مستوى الخطورة</h4>
-            <div class="chart-container">
-                <canvas id="severityChart"></canvas>
-            </div>
-        </div>
-        <div class="chart-card">
-            <h4 style="margin-bottom: 10px;">توزيع البلاغات حسب الأقضية</h4>
-            <div class="chart-container">
-                <canvas id="districtChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- جدول البلاغات -->
-    <div class="table-container">
-        <h3>جدول البلاغات المسجلة (محدث وفق التصفية)</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>العنوان</th>
-                    <th>التفاصيل</th>
-                    <th>مستوى الخطورة</th>
-                    <th>القضاء</th>
-                    <th>تاريخ التسجيل</th>
-                </tr>
-            </thead>
-            <tbody id="reportsTableBody"></tbody>
-        </table>
-    </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. التحقق من وجود تسجيل الدخول وتطبيق الصلاحيات
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-
-        if (!currentUser) {
-            window.location.href = '/login.html';
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const userInfoDiv = document.createElement('div');
-            userInfoDiv.style.color = '#38bdf8';
-            userInfoDiv.style.fontWeight = 'bold';
-            userInfoDiv.style.fontSize = '14px';
-            userInfoDiv.innerHTML = `مرحباً: ${currentUser.full_name} (${currentUser.role}) | <a href="#" onclick="logout()" style="color:#ef4444; margin-right:10px; text-decoration:none;">تسجيل الخروج</a>`;
-            
-            document.querySelector('.header').appendChild(userInfoDiv);
-
-            if (currentUser.role !== 'مدير النظام') {
-                const chartsSection = document.querySelector('.charts-grid');
-                if (chartsSection) {
-                    chartsSection.style.display = 'none';
-                }
-            }
-
-            loadAllData();
-        });
-
+        // دالة تسجيل الخروج للعودة لصفحة الدخول
         function logout() {
-            localStorage.removeItem('user');
             window.location.href = '/login.html';
-        }
-
-        // 2. إعداد الخريطة
-        const map = L.map('map').setView([33.4202, 43.3033], 8);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-        let markersGroup = L.layerGroup().addTo(map);
-        let severityChartInstance = null;
-        let districtChartInstance = null;
-
-        // 3. تحميل واسترجاع البيانات
-        async function loadAllData() {
-            const district = document.getElementById('filterDistrict').value;
-            const severity = document.getElementById('filterSeverity').value;
-
-            const response = await fetch(`/api/reports?district=${district}&severity=${severity}`);
-            const reports = await response.json();
-            
-            const tableBody = document.getElementById('reportsTableBody');
-            tableBody.innerHTML = '';
-            markersGroup.clearLayers();
-
-            reports.forEach(report => {
-                const row = `
-                    <tr>
-                        <td>${report.id}</td>
-                        <td>${report.title || '-'}</td>
-                        <td>${report.description || '-'}</td>
-                        <td><span class="badge bg-${report.severity}">${report.severity}</span></td>
-                        <td>${report.district || '-'}</td>
-                        <td>${new Date(report.created_at).toLocaleString('ar-EG')}</td>
-                    </tr>
-                `;
-                tableBody.innerHTML += row;
-
-                if (report.lat && report.lng) {
-                    L.marker([report.lat, report.lng])
-                        .bindPopup(`<b>${report.title}</b><br>الخطورة: ${report.severity}`)
-                        .addTo(markersGroup);
-                }
-            });
-
-            if (currentUser.role === 'مدير النظام') {
-                loadAnalytics();
-            }
-        }
-
-        // 4. رسم وتحديث الرسوم البيانية
-        async function loadAnalytics() {
-            const res = await fetch('/api/analytics');
-            const data = await res.json();
-
-            const sevLabels = data.severityStats.map(s => s.severity);
-            const sevCounts = data.severityStats.map(s => s.count);
-
-            const distLabels = data.districtStats.map(d => d.district);
-            const distCounts = data.districtStats.map(d => d.count);
-
-            if (severityChartInstance) severityChartInstance.destroy();
-            const ctx1 = document.getElementById('severityChart').getContext('2d');
-            severityChartInstance = new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                    labels: sevLabels,
-                    datasets: [{
-                        data: sevCounts,
-                        backgroundColor: ['#22c55e', '#eab308', '#f97316', '#ef4444']
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            if (districtChartInstance) districtChartInstance.destroy();
-            const ctx2 = document.getElementById('districtChart').getContext('2d');
-            districtChartInstance = new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                    labels: distLabels,
-                    datasets: [{
-                        label: 'عدد البلاغات',
-                        data: distCounts,
-                        backgroundColor: '#38bdf8'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-
-        // 5. نظام التنبيهات الفورية للبلاغات الحرجة
-        function checkCriticalAlert(severity, title) {
-            if (severity === 'حرج') {
-                try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioCtx.createOscillator();
-                    const gainNode = audioCtx.createGain();
-                    
-                    oscillator.type = 'sawtooth';
-                    oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.5);
-                } catch (e) {
-                    console.log('Audio alert blocked by browser:', e);
-                }
-
-                alert(`⚠️ تنبيه حرج فوري!\nتم تسجيل بلاغ عاجل بدرجة خطورة حرجة:\n"${title}"`);
-            }
-        }
-
-        // 6. إضافة بلاغ جديد واستدعاء التنبيه
-        async function submitReport() {
-            const title = document.getElementById('reportTitle').value;
-            const description = document.getElementById('reportDesc').value;
-            const severity = document.getElementById('reportSeverity').value;
-            const district = document.getElementById('reportDistrict').value;
-
-            if (!title) { alert('يرجى كتابة العنوان!'); return; }
-
-            await fetch('/api/reports', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description, severity, district })
-            });
-
-            document.getElementById('reportTitle').value = '';
-            document.getElementById('reportDesc').value = '';
-            
-            await loadAllData();
-            checkCriticalAlert(severity, title);
-        }
-
-        // 7. دوال تصدير التقارير
-        function exportToExcel() {
-            const table = document.querySelector("table");
-            const wb = XLSX.utils.table_to_book(table, { sheet: "البلاغات المسجلة" });
-            XLSX.writeFile(wb, `تقرير_البلاغات_${new Date().toISOString().slice(0,10)}.xlsx`);
-        }
-
-        function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'pt', 'a4');
-
-            doc.setFontSize(16);
-            doc.text("تقرير البلاغات المسجلة - مركز القيادة والتحكم", 40, 40);
-
-            doc.autoTable({
-                html: 'table',
-                startY: 60,
-                styles: { fontStyle: 'normal', halign: 'right' },
-                headStyles: { fillColor: [56, 189, 248] }
-            });
-
-            doc.save(`تقرير_البلاغات_${new Date().toISOString().slice(0,10)}.pdf`);
         }
     </script>
+
 </body>
 </html>
