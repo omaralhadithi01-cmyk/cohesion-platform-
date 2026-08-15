@@ -22,7 +22,7 @@ app.post('/login', (req, res) => {
 
         // بيانات الدخول الخاصة بك
         const MY_USERNAME = 'Omar';
-        const MY_PASSWORD = '12345678'; // ضع كلمة المرور التي اخترتها هنا
+        const MY_PASSWORD = '1234@@5678'; // ضع كلمة المرور التي اخترتها هنا
 
         if (username === MY_USERNAME && password === MY_PASSWORD) {
             return res.json({ success: true, redirectUrl: '/dashboard.html' });
