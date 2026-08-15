@@ -3,93 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - مركز القيادة والتحكم</title>
+    <title>تسجيل الدخول للنظام</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        body {
+            font-family: Tahoma, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
         .login-card {
-            background: #1e293b;
+            background: rgba(255, 255, 255, 0.95);
             padding: 30px;
             border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            border-top: 5px solid #38bdf8;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            width: 320px;
+            text-align: center;
         }
-        .login-card h2 { text-align: center; margin-bottom: 20px; color: #38bdf8; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 14px; }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
         input {
             width: 100%;
             padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
             border-radius: 6px;
-            border: 1px solid #334155;
-            background: #0f172a;
-            color: white;
-            font-size: 14px;
+            box-sizing: border-box;
         }
         button {
             width: 100%;
-            padding: 12px;
-            background-color: #38bdf8;
-            color: #0f172a;
-            font-weight: bold;
+            padding: 10px;
+            background-color: #00bcd4;
             border: none;
+            color: white;
+            font-size: 16px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
-            transition: 0.2s;
+            margin-top: 10px;
+            transition: background 0.3s;
         }
-        button:hover { background-color: #0284c7; color: white; }
-        .error-msg { color: #ef4444; font-size: 13px; margin-top: 10px; text-align: center; display: none; }
+        button:hover {
+            background-color: #008ba3;
+        }
+        #error-msg {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
     <div class="login-card">
         <h2>تسجيل الدخول للنظام</h2>
-        <form id="loginForm" onsubmit="handleLogin(event)">
-            <div class="form-group">
-                <label>اسم المستخدم:</label>
-                <input type="text" id="username" placeholder="أدخل اسم المستخدم..." required>
-            </div>
-            <div class="form-group">
-                <label>كلمة المرور:</label>
-                <input type="password" id="password" placeholder="أدخل كلمة المرور..." required>
-            </div>
+        <form id="loginForm">
+            <input type="text" id="username" name="username" placeholder="اسم المستخدم" required>
+            <input type="password" id="password" name="password" placeholder="كلمة المرور" required>
             <button type="submit">دخول</button>
-            <div id="errorMsg" class="error-msg">اسم المستخدم أو كلمة المرور غير صحيحة</div>
         </form>
+        <div id="error-msg"></div>
     </div>
 
     <script>
-        async function handleLogin(event) {
-            event.preventDefault();
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('errorMsg');
+            const errorMsg = document.getElementById('error-msg');
+            
+            errorMsg.textContent = 'جاري الاتصال...';
 
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.success) {
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = '/dashboard.html';
+            // إرسال الطلب إلى مسار السيرفر النسبي
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirectUrl;
                 } else {
-                    errorMsg.style.display = 'block';
-                    errorMsg.innerText = data.message || 'بيانات الدخول غير صحيحة';
+                    errorMsg.textContent = data.message || 'حدث خطأ في بيانات الدخول';
                 }
-            } catch (err) {
-                errorMsg.style.display = 'block';
-                errorMsg.innerText = 'حدث خطأ في الاتصال بالسيرفر';
-            }
-        }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                errorMsg.textContent = 'حدث خطأ في الاتصال بالسيرفر';
+            });
+        });
     </script>
+
 </body>
 </html>
