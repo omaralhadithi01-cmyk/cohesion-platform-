@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق الميدان - إرسال بلاغ</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+        .card { background: #1e293b; padding: 25px; border-radius: 12px; width: 100%; max-width: 420px; border-top: 5px solid #22c55e; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #22c55e; margin-bottom: 5px; font-size: 20px; }
+        p.subtitle { text-align: center; color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-size: 13px; color: #cbd5e1; }
+        input, select, textarea, button { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 14px; }
+        button.gps-btn { background-color: #0284c7; color: white; font-weight: bold; margin-bottom: 10px; border: none; cursor: pointer; }
+        button.gps-btn:hover { background-color: #0369a1; }
+        button.submit-btn { background-color: #22c55e; color: #0f172a; font-weight: bold; border: none; cursor: pointer; font-size: 16px; }
+        button.submit-btn:hover { background-color: #16a34a; color: white; }
+        .status-msg { margin-top: 10px; text-align: center; font-size: 13px; padding: 8px; border-radius: 6px; display: none; }
+        .status-success { background: #15803d; color: white; }
+        .status-error { background: #b91c1c; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>📱 بوابة الإدخال الميداني السريع</h2>
+        <p class="subtitle">منصة قيادة التماسك المجتمعي</p>
+
+        <div class="form-group">
+            <label>عنوان البلاغ الميداني:</label>
+            <input type="text" id="title" placeholder="أدخل العنوان...">
+        </div>
+
+        <div class="form-group">
+            <label>تفاصيل البلاغ:</label>
+            <textarea id="description" rows="3" placeholder="اكتب التفاصيل..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>مستوى الخطورة التقديري:</label>
+            <select id="severity">
+                <option value="بسيط">بسيط</option>
+                <option value="متوسط">متوسط</option>
+                <option value="عالي">عالي</option>
+                <option value="حرج">حرج</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>القضاء / المنطقة:</label>
+            <select id="district">
+                <option value="الرمادي">الرمادي</option>
+                <option value="الفلوجة">الفلوجة</option>
+                <option value="هيت">هيت</option>
+                <option value="حديثة">حديثة</option>
+                <option value="القائم">القائم</option>
+                <option value="بغداد">بغداد</option>
+            </select>
+        </div>
+
+        <button type="button" class="gps-btn" onclick="getLocation()">📍 تحديد موقعي عبر الـ GPS</button>
+        <div id="gpsStatus" style="font-size: 12px; color: #38bdf8; margin-bottom: 10px; text-align: center;"></div>
+
+        <button type="button" class="submit-btn" onclick="sendReport()">إرسال البلاغ لمركز القيادة</button>
+        
+        <div id="statusMsg" class="status-msg"></div>
+    </div>
+
+    <script>
+        let userLat = null;
+        let userLng = null;
+
+        function getLocation() {
+            const gpsStatus = document.getElementById('gpsStatus');
+            if (navigator.geolocation) {
+                gpsStatus.innerText = "جاري التقاط الإحداثيات...";
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLat = position.coords.latitude;
+                        userLng = position.coords.longitude;
+                        gpsStatus.innerText = `تم تحديد الموقع بنجاح (${userLat.toFixed(4)}, ${userLng.toFixed(4)})`;
+                    },
+                    (error) => {
+                        gpsStatus.innerText = "تعذر الحصول على الـ GPS، سيتم استخدام موقع القضاء تلقائياً.";
+                    }
+                );
+            } else {
+                gpsStatus.innerText = "الـ GPS غير مدعوم في هذا المتصفح.";
+            }
+        }
+
+        async function sendReport() {
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const severity = document.getElementById('severity').value;
+            const district = document.getElementById('district').value;
+            const statusMsg = document.getElementById('statusMsg');
+
+            if (!title) {
+                statusMsg.className = "status-msg status-error";
+                statusMsg.style.display = "block";
+                statusMsg.innerText = "يرجى كتابة عنوان البلاغ!";
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reports', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description, severity, district, lat: userLat, lng: userLng })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success !== false) {
+                    statusMsg.className = "status-msg status-success";
+                    statusMsg.style.display = "block";
+                    statusMsg.innerText = "تم إرسال البلاغ لمركز القيادة بنجاح!";
+                    
+                    document.getElementById('title').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('gpsStatus').innerText = '';
+                    userLat = null;
+                    userLng = null;
+                } else {
+                    throw new Error(data.error || 'فشل الإرسال');
+                }
+            } catch (err) {
+                statusMsg.className = "status-msg status-error";
+                statusMsg.style.display = "block";
+                statusMsg.innerText = "فشل إرسال البلاغ. حاول مجدداً.";
+            }
+        }
+    </script>
+</body>
+</html>
