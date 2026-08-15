@@ -24,7 +24,7 @@ app.post('/login', (req, res) => {
     const MY_PASSWORD = 'your_password'; // اكتب كلمة المرور التي تريدها هنا
     // --------------------------------------
 
-    if (username === MY_USERNAME && password === MY_PASSWORD) {
+    if (username === Omar && password === @@@@1234) {
         return res.json({ success: true, redirectUrl: '/dashboard.html' });
     }
 
