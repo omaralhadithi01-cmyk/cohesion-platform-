@@ -17,18 +17,22 @@ app.get('/', (req, res) => {
 
 // مسار معالجة تسجيل الدخول (API)
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
+    try {
+        const { username, password } = req.body || {};
 
-    // --- ضع بيانات الدخول الخاصة بك هنا ---
-    const MY_USERNAME = 'your_username'; // اكتب اسم المستخدم الذي تريده هنا
-    const MY_PASSWORD = 'your_password'; // اكتب كلمة المرور التي تريدها هنا
-    // --------------------------------------
+        // بيانات الدخول الخاصة بك
+        const MY_USERNAME = 'Omar';
+        const MY_PASSWORD = 'your_password'; // ضع كلمة المرور التي اخترتها هنا
 
-    if (username === Omar && password === @@@@1234) {
-        return res.json({ success: true, redirectUrl: '/dashboard.html' });
+        if (username === MY_USERNAME && password === MY_PASSWORD) {
+            return res.json({ success: true, redirectUrl: '/dashboard.html' });
+        }
+
+        return res.status(401).json({ success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    } catch (error) {
+        console.error('Login Error:', error);
+        return res.status(500).json({ success: false, message: 'خطأ داخلي في الخادم' });
     }
-
-    return res.status(401).json({ success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
 });
 
 // قراءة المنفذ الديناميكي الخاص بـ Railway تلقائياً
