@@ -17,7 +17,7 @@ app.post('/login', (req, res) => {
 
         // اسم المستخدم وكلمة المرور الرسمية للنظام
         const MY_USERNAME = 'Omar';
-        const MY_PASSWORD = '12345678';
+        const MY_PASSWORD = '1234@@5678';
 
         if (username === MY_USERNAME && password === MY_PASSWORD) {
             return res.json({ success: true, redirectUrl: '/dashboard.html' });
