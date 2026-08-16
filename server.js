@@ -106,6 +106,9 @@ app.get('/api/analytics', (req, res) => {
     res.json({ severityStats, districtStats });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 السيرفر يعمل الآن وجاهز للاستخدام! المنفذ: ${PORT}`);
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+
 });
