@@ -461,5 +461,33 @@
             doc.save(`تقرير_البلاغات_${new Date().toISOString().slice(0,10)}.pdf`);
         }
     </script>
+<!-- زر الشات العائم -->
+<button onclick="toggleChat()" style="position:fixed; bottom:20px; right:20px; z-index:9999; padding:15px; background:#0284c7; color:white; border:none; border-radius:50px; cursor:pointer;">📡 تراسل</button>
+
+<!-- نافذة الشات -->
+<div id="chatWindow" style="display:none; position:fixed; bottom:80px; right:20px; width:300px; height:400px; background:#1e293b; border-radius:10px; padding:10px; z-index:9998; border:1px solid #334155;">
+    <div id="chatBox" style="height:300px; overflow-y:auto; color:white; margin-bottom:10px;"></div>
+    <input type="text" id="chatInput" placeholder="اكتب رسالة..." style="width:100%;">
+    <button onclick="sendMessage()" style="width:100%; margin-top:5px;">إرسال</button>
+</div>
+
+<!-- كود الاتصال -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    function toggleChat() { 
+        const win = document.getElementById('chatWindow');
+        win.style.display = (win.style.display === 'none') ? 'block' : 'none';
+    }
+    function sendMessage() {
+        const input = document.getElementById('chatInput');
+        socket.emit('chat_message', { sender: 'مدير النظام', text: input.value });
+        input.value = '';
+    }
+    socket.on('chat_message', (data) => {
+        const box = document.getElementById('chatBox');
+        box.innerHTML += `<div style="margin-bottom:5px;"><b>${data.sender}:</b> ${data.text}</div>`;
+    });
+</script>
 </body>
 </html>
