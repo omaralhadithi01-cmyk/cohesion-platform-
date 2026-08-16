@@ -1,6 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
+const fs = require('fs');
 const path = require('path');
 
 const app = express();
@@ -9,7 +8,27 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-let db;
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// تحميل أو إنشاء البيانات الأولية
+function loadData() {
+    if (!fs.existsSync(DATA_FILE)) {
+        const initialData = {
+            users: [
+                { id: 1, username: 'admin', password: 'admin123', full_name: 'مدير النظام', role: 'مدير النظام' },
+                { id: 2, username: 'user', password: 'user123', full_name: 'مراقب ميداني', role: 'مراقب ميداني' }
+            ],
+            reports: []
+        };
+        fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
+    }
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    return data;
+}
+
+function saveData(data) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+}
 
 const districtCoords = {
     'الرمادي': [33.4202, 43.3033],
@@ -20,91 +39,41 @@ const districtCoords = {
     'بغداد': [33.3152, 44.3661]
 };
 
-(async () => {
-    try {
-        db = await open({
-            filename: path.join(__dirname, 'database.db'),
-            driver: sqlite3.Database
-        });
-
-        await db.exec(`
-            CREATE TABLE IF NOT EXISTS reports (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                description TEXT,
-                severity TEXT NOT NULL,
-                district TEXT NOT NULL,
-                lat REAL,
-                lng REAL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await db.exec(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                full_name TEXT NOT NULL,
-                role TEXT NOT NULL
-            )
-        `);
-
-        const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-        if (userCount.count === 0) {
-            await db.run(`
-                INSERT INTO users (username, password, full_name, role) VALUES 
-                ('admin', 'admin123', 'مدير النظام', 'مدير النظام'),
-                ('user', 'user123', 'مراقب ميداني', 'مراقب ميداني')
-            `);
-        }
-
-        console.log('✅ تم الاتصال بقاعدة البيانات بنجاح.');
-    } catch (dbError) {
-        console.error('❌ خطأ في تهيئة قاعدة البيانات:', dbError.message);
-    }
-})();
-
-app.post('/api/login', async (req, res) => {
+// مسار تسجيل الدخول
+app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    try {
-        const user = await db.get('SELECT id, username, full_name, role FROM users WHERE username = ? AND password = ?', [username, password]);
-        if (user) {
-            res.json({ success: true, user });
-        } else {
-            res.status(401).json({ success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
-        }
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+    const dbData = loadData();
+    const user = dbData.users.find(u => u.username === username && u.password === password);
+    
+    if (user) {
+        res.json({ success: true, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role } });
+    } else {
+        res.status(401).json({ success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
     }
 });
 
-app.get('/api/reports', async (req, res) => {
+// جلب البلاغات مع التصفية
+app.get('/api/reports', (req, res) => {
     const { district, severity } = req.query;
-    let query = 'SELECT * FROM reports WHERE 1=1';
-    const params = [];
+    const dbData = loadData();
+    let reports = dbData.reports;
 
     if (district && district !== 'الكل') {
-        query += ' AND district = ?';
-        params.push(district);
+        reports = reports.filter(r => r.district === district);
     }
     if (severity && severity !== 'الكل') {
-        query += ' AND severity = ?';
-        params.push(severity);
+        reports = reports.filter(r => r.severity === severity);
     }
 
-    query += ' ORDER BY created_at DESC';
-
-    try {
-        const reports = await db.all(query, params);
-        res.json(reports);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    // ترتيب تنازلي حسب الأحدث
+    reports.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    res.json(reports);
 });
 
-app.post('/api/reports', async (req, res) => {
+// إضافة بلاغ جديد
+app.post('/api/reports', (req, res) => {
     const { title, description, severity, district, lat, lng } = req.body;
+    const dbData = loadData();
     
     let finalLat = lat;
     let finalLng = lng;
@@ -115,27 +84,42 @@ app.post('/api/reports', async (req, res) => {
         finalLng = coords[1];
     }
 
-    try {
-        const result = await db.run(
-            `INSERT INTO reports (title, description, severity, district, lat, lng) VALUES (?, ?, ?, ?, ?, ?)`,
-            [title, description, severity, district, finalLat, finalLng]
-        );
-        res.json({ success: true, id: result.lastID, title, description, severity, district, lat: finalLat, lng: finalLng });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
+    const newReport = {
+        id: dbData.reports.length > 0 ? dbData.reports[dbData.reports.length - 1].id + 1 : 1,
+        title,
+        description,
+        severity,
+        district,
+        lat: finalLat,
+        lng: finalLng,
+        created_at: new Date().toISOString()
+    };
+
+    dbData.reports.push(newReport);
+    saveData(dbData);
+
+    res.json({ success: true, ...newReport });
 });
 
-app.get('/api/analytics', async (req, res) => {
-    try {
-        const severityStats = await db.all(`SELECT severity, COUNT(*) as count FROM reports GROUP BY severity`);
-        const districtStats = await db.all(`SELECT district, COUNT(*) as count FROM reports GROUP BY district`);
-        res.json({ severityStats, districtStats });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// تحليلات البيانات للرسوم البيانية
+app.get('/api/analytics', (req, res) => {
+    const dbData = loadData();
+    const reports = dbData.reports;
+
+    const severityMap = {};
+    const districtMap = {};
+
+    reports.forEach(r => {
+        severityMap[r.severity] = (severityMap[r.severity] || 0) + 1;
+        districtMap[r.district] = (districtMap[r.district] || 0) + 1;
+    });
+
+    const severityStats = Object.keys(severityMap).map(severity => ({ severity, count: severityMap[severity] }));
+    const districtStats = Object.keys(districtMap).map(district => ({ district, count: districtMap[district] }));
+
+    res.json({ severityStats, districtStats });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 السيرفر يعمل على المنفذ: ${PORT}`);
+    console.log(`🚀 السيرفر يعمل على المنفذ: ${PORT} وبدون أخطاء قاعدة البيانات.`);
 });
