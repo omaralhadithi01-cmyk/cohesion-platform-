@@ -11,7 +11,6 @@ app.use(express.static(path.join(__dirname)));
 
 let db;
 
-// إحداثيات افتراضية للأقضية
 const districtCoords = {
     'الرمادي': [33.4202, 43.3033],
     'الفلوجة': [33.3536, 43.7781],
@@ -21,7 +20,6 @@ const districtCoords = {
     'بغداد': [33.3152, 44.3661]
 };
 
-// تهيئة قاعدة البيانات بشكل آمن لتعمل على السحاب
 (async () => {
     try {
         db = await open({
@@ -29,7 +27,6 @@ const districtCoords = {
             driver: sqlite3.Database
         });
 
-        // إنشاء جدول البلاغات
         await db.exec(`
             CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +40,6 @@ const districtCoords = {
             )
         `);
 
-        // إنشاء جدول المستخدمين
         await db.exec(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,7 +50,6 @@ const districtCoords = {
             )
         `);
 
-        // إضافة مستخدمين افتراضيين عند التشغيل الأول
         const userCount = await db.get('SELECT COUNT(*) as count FROM users');
         if (userCount.count === 0) {
             await db.run(`
@@ -70,7 +65,6 @@ const districtCoords = {
     }
 })();
 
-// مسار تسجيل الدخول
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -85,7 +79,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// جلب البلاغات مع التصفية
 app.get('/api/reports', async (req, res) => {
     const { district, severity } = req.query;
     let query = 'SELECT * FROM reports WHERE 1=1';
@@ -110,7 +103,6 @@ app.get('/api/reports', async (req, res) => {
     }
 });
 
-// إضافة بلاغ جديد
 app.post('/api/reports', async (req, res) => {
     const { title, description, severity, district, lat, lng } = req.body;
     
@@ -134,7 +126,6 @@ app.post('/api/reports', async (req, res) => {
     }
 });
 
-// تحليلات البيانات للرسوم البيانية
 app.get('/api/analytics', async (req, res) => {
     try {
         const severityStats = await db.all(`SELECT severity, COUNT(*) as count FROM reports GROUP BY severity`);
@@ -145,6 +136,6 @@ app.get('/api/analytics', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 السيرفر يعمل على المنفذ: ${PORT}`);
 });
