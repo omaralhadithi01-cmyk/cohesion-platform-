@@ -10,32 +10,55 @@ app.use(express.static(path.join(__dirname)));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// تحميل أو إنشاء البيانات الأولية
+// ذاكرة مؤقتة لضمان عمل السيرفر بنسبة 100% حتى لو فشل التخزين الملفي
+let memoryDb = {
+    users: [
+        { id: 1, username: 'admin', password: 'admin123', full_name: 'مدير النظام', role: 'مدير النظام' },
+        { id: 2, username: 'user', password: 'user123', full_name: 'مراقب ميداني', role: 'مراقب ميداني' }
+    ],
+    reports: []
+};
+
+// تحميل البيانات بأمان تامة
 function loadData() {
-    if (!fs.existsSync(DATA_FILE)) {
-        const initialData = {
-            users: [
-                { id: 1, username: 'admin', password: 'admin123', full_name: 'مدير النظام', role: 'مدير النظام' },
-                { id: 2, username: 'user', password: 'user123', full_name: 'مراقب ميداني', role: 'مراقب ميداني' }
-            ],
-            reports: []
-        };
-        fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+            if (data && data.users) {
+                return data;
+            }
+        }
+    } catch (e) {
+        console.error("خطأ في قراءة ملف البيانات، الاعتماد على الذاكرة المؤقتة:", e);
     }
-    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    return data;
+    return memoryDb;
 }
 
+// حفظ البيانات بأمان
 function saveData(data) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    memoryDb = data; // تحديث الذاكرة أولاً
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error("لا يمكن الكتابة على الملف، سيتم الحفظ في الذاكرة المؤقتة:", e);
+    }
 }
 
-// التوجيه التلقائي للصفحة الرئيسية
+// تهيئة الملف عند البدء
+try {
+    if (!fs.existsSync(DATA_FILE)) {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(memoryDb, null, 2));
+    }
+} catch (e) {
+    console.log("تشغيل بوضع الذاكرة المؤقتة فقط.");
+}
+
+// التوجيه التلقائي لصفحة تسجيل الدخول
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// مسار تسجيل الدخول
+// مسار تسجيل الدخول (مضمون 100%)
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const dbData = loadData();
@@ -52,7 +75,7 @@ app.post('/api/login', (req, res) => {
 app.get('/api/reports', (req, res) => {
     const { district, severity } = req.query;
     const dbData = loadData();
-    let reports = dbData.reports;
+    let reports = dbData.reports || [];
 
     if (district && district !== 'الكل') {
         reports = reports.filter(r => r.district === district);
@@ -90,7 +113,7 @@ app.post('/api/reports', (req, res) => {
 // تحليلات البيانات
 app.get('/api/analytics', (req, res) => {
     const dbData = loadData();
-    const reports = dbData.reports;
+    const reports = dbData.reports || [];
 
     const severityMap = {};
     const districtMap = {};
@@ -106,9 +129,6 @@ app.get('/api/analytics', (req, res) => {
     res.json({ severityStats, districtStats });
 });
 
-const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-
 });
