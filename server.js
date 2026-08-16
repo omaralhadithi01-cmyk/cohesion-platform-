@@ -1,8 +1,13 @@
 const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -106,6 +111,14 @@ app.get('/api/analytics', (req, res) => {
     res.json({ severityStats, districtStats });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// إعداد التراسل الفوري عبر Socket.io
+io.on('connection', (socket) => {
+    socket.on('chat_message', (data) => {
+        io.emit('chat_message', data);
+    });
+});
+
+// تشغيل السيرفر باستخدام server.listen بدلاً من app.listen لضمان عمل Socket.io و Railway معا
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 السيرفر يعمل الآن وجاهز للاستخدام! المنفذ: ${PORT}`);
 });
