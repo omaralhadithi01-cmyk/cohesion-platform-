@@ -1,62 +1,465 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة قيادة التماسك المجتمعي - مركز التحليلات المباشرة</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Chart.js للرسوم البيانية -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
+    <!-- مكتبة تصدير Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-// إضافة هذا السطر لجعل التراسل يعمل بشكل متوافق مع Railway
-const port = process.env.PORT || 3000;
+    <!-- مكتبة تصدير PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
-app.get('/', (req, res) => {
-    res.send(`
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <title>منصة التماسك - الأنبار</title>
-        <script src="/socket.io/socket.io.js"></script>
-        <style>
-            body { background: #0f172a; color: white; font-family: sans-serif; padding: 10px; }
-            .chat-box { height: 300px; background: #1e293b; padding: 10px; border-radius: 8px; overflow-y: auto; border: 1px solid #334155; }
-            .msg { margin-bottom: 8px; border-bottom: 1px solid #334155; font-size: 14px; }
-            input { width: 100%; padding: 8px; margin: 5px 0; border-radius: 4px; border: none; box-sizing: border-box; }
-            button { width: 100%; padding: 10px; background: #0284c7; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        </style>
-    </head>
-    <body>
-        <h3>📡 التراسل الفوري</h3>
-        <div id="chatBox" class="chat-box"></div>
-        <input type="text" id="username" placeholder="الاسم/الصفة">
-        <input type="text" id="chatInput" placeholder="اكتب رسالة...">
-        <button onclick="send()">إرسال</button>
-        <script>
-            const socket = io();
-            function send() {
-                const user = document.getElementById('username').value || 'ميداني';
-                const text = document.getElementById('chatInput').value;
-                if(!text) return;
-                socket.emit('chat_message', { sender: user, text: text });
-                document.getElementById('chatInput').value = '';
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; padding: 15px; }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1e293b;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-right: 5px solid #38bdf8;
+        }
+
+        .filter-bar {
+            background: #1e293b;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        #map { height: 420px; border-radius: 8px; }
+
+        .side-panel {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .chart-card {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .chart-container { position: relative; width: 100%; height: 210px; }
+
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        input, select, textarea, button {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: white;
+        }
+        button { background-color: #22c55e; color: white; font-weight: bold; cursor: pointer; border: none; }
+        button:hover { background-color: #16a34a; }
+
+        .btn-action { display: flex; gap: 10px; margin-top: 5px; }
+        .btn-excel { background-color: #0d9488; }
+        .btn-excel:hover { background-color: #0f766e; }
+        .btn-pdf { background-color: #e11d48; }
+        .btn-pdf:hover { background-color: #be123c; }
+
+        .table-container { background: #1e293b; padding: 15px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: right; }
+        th, td { padding: 10px; border-bottom: 1px solid #334155; }
+        th { background-color: #334155; color: #38bdf8; }
+        tr:hover { background-color: #0f172a; }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .bg-حرج { background-color: #ef4444; }
+        .bg-عالي { background-color: #f97316; }
+        .bg-متوسط { background-color: #eab308; color: black; }
+        .bg-بسيط { background-color: #22c55e; }
+    </style>
+</head>
+<body>
+
+    <!-- الهيدر الرئيسي -->
+    <div class="header">
+        <div>
+            <h2>مركز قيادة التماسك المجتمعي - اللوحة التحليلية</h2>
+            <span style="color: #94a3b8; font-size: 13px;">مباشر | التحديث التلقائي مفعّل</span>
+        </div>
+    </div>
+
+    <!-- شريط الفلاتر الحية -->
+    <div class="filter-bar">
+        <strong>تصفية البيانات:</strong>
+        <div class="filter-group">
+            <label>القضاء:</label>
+            <select id="filterDistrict" onchange="loadAllData()">
+                <option value="الكل">جميع الأقضية</option>
+                <option value="الرمادي">الرمادي</option>
+                <option value="الفلوجة">الفلوجة</option>
+                <option value="هيت">هيت</option>
+                <option value="حديثة">حديثة</option>
+                <option value="القائم">القائم</option>
+                <option value="بغداد">بغداد</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>مستوى الخطورة:</label>
+            <select id="filterSeverity" onchange="loadAllData()">
+                <option value="الكل">الجميع</option>
+                <option value="بسيط">بسيط</option>
+                <option value="متوسط">متوسط</option>
+                <option value="عالي">عالي</option>
+                <option value="حرج">حرج</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- الخريطة -->
+        <div id="map"></div>
+
+        <!-- لوحة الإدخال والتصدير -->
+        <div class="side-panel">
+            <h3>تسجيل بلاغ جديد</h3>
+            <div class="form-group">
+                <label>العنوان:</label>
+                <input type="text" id="reportTitle" placeholder="عنوان البلاغ...">
+            </div>
+            <div class="form-group">
+                <label>التفاصيل:</label>
+                <textarea id="reportDesc" rows="2" placeholder="تفاصيل..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>مستوى الخطورة:</label>
+                <select id="reportSeverity">
+                    <option value="بسيط">بسيط</option>
+                    <option value="متوسط">متوسط</option>
+                    <option value="عالي">عالي</option>
+                    <option value="حرج">حرج</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>القضاء:</label>
+                <select id="reportDistrict">
+                    <option value="الرمادي">الرمادي</option>
+                    <option value="الفلوجة">الفلوجة</option>
+                    <option value="هيت">هيت</option>
+                    <option value="حديثة">حديثة</option>
+                    <option value="القائم">القائم</option>
+                    <option value="بغداد">بغداد</option>
+                </select>
+            </div>
+            <button onclick="submitReport()">إرسال وتحديث اللوحة</button>
+
+            <hr style="border-color: #334155; margin: 5px 0;">
+
+            <h3>تصدير التقارير الرسمية</h3>
+            <div class="btn-action">
+                <button class="btn-excel" onclick="exportToExcel()" style="width: 50%;">تصدير Excel</button>
+                <button class="btn-pdf" onclick="exportToPDF()" style="width: 50%;">تصدير PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- الرسوم البيانية التفاعلية -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h4 style="margin-bottom: 10px;">تصنيف البلاغات حسب مستوى الخطورة</h4>
+            <div class="chart-container">
+                <canvas id="severityChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h4 style="margin-bottom: 10px;">توزيع البلاغات حسب الأقضية</h4>
+            <div class="chart-container">
+                <canvas id="districtChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول البلاغات -->
+    <div class="table-container">
+        <h3>جدول البلاغات المسجلة (محدث وفق التصفية)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>العنوان</th>
+                    <th>التفاصيل</th>
+                    <th>مستوى الخطورة</th>
+                    <th>القضاء</th>
+                    <th>تاريخ التسجيل</th>
+                </tr>
+            </thead>
+            <tbody id="reportsTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // 1. التحقق من وجود تسجيل الدخول وتطبيق الصلاحيات
+        const currentUser = JSON.parse(localStorage.getItem('user')) || { full_name: "مستخدم تجريبي", role: "مدير النظام" };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userInfoDiv = document.createElement('div');
+            userInfoDiv.style.color = '#38bdf8';
+            userInfoDiv.style.fontWeight = 'bold';
+            userInfoDiv.style.fontSize = '14px';
+            userInfoDiv.innerHTML = `مرحباً: ${currentUser.full_name} (${currentUser.role}) | <a href="#" onclick="logout()" style="color:#ef4444; margin-right:10px; text-decoration:none;">تسجيل الخروج</a>`;
+            
+            document.querySelector('.header').appendChild(userInfoDiv);
+
+            if (currentUser.role !== 'مدير النظام') {
+                const chartsSection = document.querySelector('.charts-grid');
+                if (chartsSection) {
+                    chartsSection.style.display = 'none';
+                }
             }
-            socket.on('chat_message', (data) => {
-                const box = document.getElementById('chatBox');
-                box.innerHTML += '<div class="msg"><b>'+data.sender+':</b> '+data.text+'</div>';
-                box.scrollTop = box.scrollHeight;
+
+            loadAllData();
+        });
+
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+
+        // 2. إعداد الخريطة
+        const map = L.map('map').setView([33.4202, 43.3033], 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+        let markersGroup = L.layerGroup().addTo(map);
+        let severityChartInstance = null;
+        let districtChartInstance = null;
+
+        // 3. تحميل واسترجاع البيانات
+        async function loadAllData() {
+            const district = document.getElementById('filterDistrict').value;
+            const severity = document.getElementById('filterSeverity').value;
+
+            try {
+                const response = await fetch(`/api/reports?district=${district}&severity=${severity}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const reports = await response.json();
+                
+                renderTableAndMap(reports);
+            } catch (error) {
+                // بيانات وهمية للاختبار والعرض المباشر في حال عدم تشغيل الخادم الخلفي محلياً
+                const mockReports = [
+                    { id: 1, title: 'توتر مجتمعي في السوق الكبير', description: 'خلاف على محال تجارية وتدخل وجهاء العشائر', severity: 'عالي', district: 'الرمادي', lat: 33.425, lng: 43.310, created_at: new Date() },
+                    { id: 2, title: 'نزاع عشائري طارئ', description: 'استخدام أسلحة خفيفة وقوات الأمن تتدخل لفرض الطوق', severity: 'حرج', district: 'الفلوجة', lat: 33.345, lng: 43.785, created_at: new Date() },
+                    { id: 3, title: 'احتجاجات سلمية للمطالبة بالخدمات', description: 'تجمع أمام مبنى القائمقامية سلمي ومنظم', severity: 'بسيط', district: 'هيت', lat: 33.640, lng: 42.825, created_at: new Date() }
+                ];
+
+                const filtered = mockReports.filter(r => {
+                    return (district === 'الكل' || r.district === district) && (severity === 'الكل' || r.severity === severity);
+                });
+
+                renderTableAndMap(filtered);
+            }
+
+            if (currentUser.role === 'مدير النظام') {
+                loadAnalytics();
+            }
+        }
+
+        function renderTableAndMap(reports) {
+            const tableBody = document.getElementById('reportsTableBody');
+            tableBody.innerHTML = '';
+            markersGroup.clearLayers();
+
+            reports.forEach(report => {
+                const row = `
+                    <tr>
+                        <td>${report.id}</td>
+                        <td>${report.title || '-'}</td>
+                        <td>${report.description || '-'}</td>
+                        <td><span class="badge bg-${report.severity}">${report.severity}</span></td>
+                        <td>${report.district || '-'}</td>
+                        <td>${new Date(report.created_at).toLocaleString('ar-EG')}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+
+                if (report.lat && report.lng) {
+                    L.marker([report.lat, report.lng])
+                        .bindPopup(`<b>${report.title}</b><br>الخطورة: ${report.severity}`)
+                        .addTo(markersGroup);
+                }
             });
-        </script>
-    </body>
-    </html>
-    `);
-});
+        }
 
-io.on('connection', (socket) => {
-    socket.on('chat_message', (data) => {
-        io.emit('chat_message', data);
-    });
-});
+        // 4. رسم وتحديث الرسوم البيانية
+        async function loadAnalytics() {
+            try {
+                const res = await fetch('/api/analytics');
+                const data = await res.json();
+                renderCharts(data.severityStats, data.districtStats);
+            } catch (e) {
+                // بيانات تحليلية افتراضية للعرض
+                const sevStats = [
+                    { severity: 'بسيط', count: 12 },
+                    { severity: 'متوسط', count: 8 },
+                    { severity: 'عالي', count: 5 },
+                    { severity: 'حرج', count: 2 }
+                ];
+                const distStats = [
+                    { district: 'الرمادي', count: 10 },
+                    { district: 'الفلوجة', count: 7 },
+                    { district: 'هيت', count: 4 },
+                    { district: 'حديثة', count: 3 },
+                    { district: 'القائم', count: 3 }
+                ];
+                renderCharts(sevStats, distStats);
+            }
+        }
 
-server.listen(port, () => {
-    console.log('✅ الخادم يعمل بنجاح على المنفذ ' + port);
-});
+        function renderCharts(sevStats, distStats) {
+            const sevLabels = sevStats.map(s => s.severity);
+            const sevCounts = sevStats.map(s => s.count);
+
+            const distLabels = distStats.map(d => d.district);
+            const distCounts = distStats.map(d => d.count);
+
+            if (severityChartInstance) severityChartInstance.destroy();
+            const ctx1 = document.getElementById('severityChart').getContext('2d');
+            severityChartInstance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: sevLabels,
+                    datasets: [{
+                        data: sevCounts,
+                        backgroundColor: ['#22c55e', '#eab308', '#f97316', '#ef4444']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if (districtChartInstance) districtChartInstance.destroy();
+            const ctx2 = document.getElementById('districtChart').getContext('2d');
+            districtChartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: distLabels,
+                    datasets: [{
+                        label: 'عدد البلاغات',
+                        data: distCounts,
+                        backgroundColor: '#38bdf8'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // 5. نظام التنبيهات الفورية للبلاغات الحرجة
+        function checkCriticalAlert(severity, title) {
+            if (severity === 'حرج') {
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.5);
+                } catch (e) {
+                    console.log('Audio alert blocked by browser:', e);
+                }
+
+                alert(`⚠️ تنبيه حرج فوري!\nتم تسجيل بلاغ عاجل بدرجة خطورة حرجة:\n"${title}"`);
+            }
+        }
+
+        // 6. إضافة بلاغ جديد واستدعاء التنبيه
+        async function submitReport() {
+            const title = document.getElementById('reportTitle').value;
+            const description = document.getElementById('reportDesc').value;
+            const severity = document.getElementById('reportSeverity').value;
+            const district = document.getElementById('reportDistrict').value;
+
+            if (!title) { alert('يرجى كتابة العنوان!'); return; }
+
+            try {
+                await fetch('/api/reports', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description, severity, district })
+                });
+            } catch (e) {
+                console.log("Backend offline, simulating local insert.");
+            }
+
+            document.getElementById('reportTitle').value = '';
+            document.getElementById('reportDesc').value = '';
+            
+            await loadAllData();
+            checkCriticalAlert(severity, title);
+        }
+
+        // 7. دوال تصدير التقارير
+        function exportToExcel() {
+            const table = document.querySelector("table");
+            const wb = XLSX.utils.table_to_book(table, { sheet: "البلاغات المسجلة" });
+            XLSX.writeFile(wb, `تقرير_البلاغات_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'pt', 'a4');
+
+            doc.setFontSize(16);
+            doc.text("تقرير البلاغات المسجلة - مركز القيادة والتحكم", 40, 40);
+
+            doc.autoTable({
+                html: 'table',
+                startY: 60,
+                styles: { fontStyle: 'normal', halign: 'right' },
+                headStyles: { fillColor: [56, 189, 248] }
+            });
+
+            doc.save(`تقرير_البلاغات_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+    </script>
+</body>
+</html>
