@@ -21,49 +21,53 @@ const districtCoords = {
     'بغداد': [33.3152, 44.3661]
 };
 
-// تهيئة قاعدة البيانات
+// تهيئة قاعدة البيانات بشكل آمن لتعمل على السحاب
 (async () => {
-    db = await open({
-        filename: './database.db',
-        driver: sqlite3.Database
-    });
+    try {
+        db = await open({
+            filename: path.join(__dirname, 'database.db'),
+            driver: sqlite3.Database
+        });
 
-    // إنشاء جدول البلاغات
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            description TEXT,
-            severity TEXT NOT NULL,
-            district TEXT NOT NULL,
-            lat REAL,
-            lng REAL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    // إنشاء جدول المستخدمين
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            full_name TEXT NOT NULL,
-            role TEXT NOT NULL
-        )
-    `);
-
-    // إضافة مستخدمين افتراضيين عند التشغيل الأول
-    const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-    if (userCount.count === 0) {
-        await db.run(`
-            INSERT INTO users (username, password, full_name, role) VALUES 
-            ('admin', 'admin123', 'مدير النظام', 'مدير النظام'),
-            ('user', 'user123', 'مراقب ميداني', 'مراقب ميداني')
+        // إنشاء جدول البلاغات
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                severity TEXT NOT NULL,
+                district TEXT NOT NULL,
+                lat REAL,
+                lng REAL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
         `);
-    }
 
-    console.log('✅ تم الاتصال بقاعدة البيانات بنجاح.');
+        // إنشاء جدول المستخدمين
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                role TEXT NOT NULL
+            )
+        `);
+
+        // إضافة مستخدمين افتراضيين عند التشغيل الأول
+        const userCount = await db.get('SELECT COUNT(*) as count FROM users');
+        if (userCount.count === 0) {
+            await db.run(`
+                INSERT INTO users (username, password, full_name, role) VALUES 
+                ('admin', 'admin123', 'مدير النظام', 'مدير النظام'),
+                ('user', 'user123', 'مراقب ميداني', 'مراقب ميداني')
+            `);
+        }
+
+        console.log('✅ تم الاتصال بقاعدة البيانات بنجاح.');
+    } catch (dbError) {
+        console.error('❌ خطأ في تهيئة قاعدة البيانات:', dbError.message);
+    }
 })();
 
 // مسار تسجيل الدخول
@@ -106,7 +110,7 @@ app.get('/api/reports', async (req, res) => {
     }
 });
 
-// إضافة بلاغ جديد (يدعم الإحداثيات المباشرة أو التقريبية)
+// إضافة بلاغ جديد
 app.post('/api/reports', async (req, res) => {
     const { title, description, severity, district, lat, lng } = req.body;
     
@@ -142,5 +146,5 @@ app.get('/api/analytics', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 السيرفر يعمل على: http://localhost:${PORT}`);
+    console.log(`🚀 السيرفر يعمل على المنفذ: ${PORT}`);
 });
